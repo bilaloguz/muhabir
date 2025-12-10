@@ -1,0 +1,140 @@
+:root {
+  /* Deep Space Palette */
+  --bg-color: #0B0E14;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #1a1e2e 0%, #0B0E14 70%);
+
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  --accent-color: #38bdf8;
+  --accent-glow: 0 0 20px rgba(56, 189, 248, 0.15);
+
+  /* Glass Variables */
+  --glass-bg: rgba(30, 41, 59, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Merriweather', serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-color);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  /* Parallax-like feel */
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Modern Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* FlexLayout Overrides for Dark Mode */
+.flexlayout__layout {
+  background-color: var(--bg-color) !important;
+}
+
+.flexlayout__tabset_header {
+  background-color: #1e293b !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+
+.flexlayout__tab_button {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+  border: none !important;
+}
+
+/* Glass Table Styles */
+.glass-container {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.glass-table th {
+  background: rgba(15, 23, 42, 0.8);
+  /* Darker header */
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-table td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.glass-row:hover td {
+  background: rgba(56, 189, 248, 0.05);
+  /* Accent tint */
+  color: #fff;
+}
+
+/* Badges */
+.badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid transparent;
+}
+
+.badge-blue {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.badge-purple {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.badge-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.2);
+}
