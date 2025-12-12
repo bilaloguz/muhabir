@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_URL, updateArticle, updateImage, updateImageContent, createImage } from '../api/api';
+import ImageEditor from './ImageEditor';
 
 const Badge = ({ children, color = 'rgba(255, 255, 255, 0.1)' }) => (
     <span style={{
@@ -16,26 +18,108 @@ const Badge = ({ children, color = 'rgba(255, 255, 255, 0.1)' }) => (
     </span>
 );
 
-const ImageCarousel = ({ images, index, setIndex }) => {
+const InlineEdit = ({ value, onSave, multiline = false, style = {} }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [tempValue, setTempValue] = useState(value || '');
+
+    // Sync tempValue when value prop changes
+    useEffect(() => {
+        setTempValue(value || '');
+    }, [value]);
+
+    const handleSave = () => {
+        setIsEditing(false);
+        if (tempValue !== value) {
+            onSave(tempValue);
+        }
+    };
+
+    if (isEditing) {
+        return (
+            <div style={{ position: 'relative', width: '100%' }}>
+                {multiline ? (
+                    <textarea
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        onBlur={handleSave}
+                        autoFocus
+                        style={{
+                            width: '100%',
+                            minHeight: '100px',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid var(--accent-color)',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '8px',
+                            fontFamily: 'inherit',
+                            resize: 'vertical',
+                            outline: 'none',
+                            ...style
+                        }}
+                    />
+                ) : (
+                    <input
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        onBlur={handleSave}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                        autoFocus
+                        style={{
+                            width: '100%',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid var(--accent-color)',
+                            color: 'white',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            outline: 'none',
+                            fontFamily: 'inherit',
+                            ...style
+                        }}
+                    />
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div
+            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+            title="Click to edit"
+            style={{
+                cursor: 'pointer',
+                border: '1px solid transparent',
+                borderRadius: '4px',
+                padding: '2px',
+                transition: 'all 0.2s',
+                minHeight: '24px',
+                ...style
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
+        >
+            {value || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>Click to add...</span>}
+        </div>
+    );
+};
+
+const ImageCarousel = ({ images, index, setIndex, onEdit, refreshKey }) => {
     const [isLightbox, setIsLightbox] = useState(false);
     const img = images[index];
 
     const next = (e) => { e && e.stopPropagation(); setIndex((index + 1) % images.length); };
     const prev = (e) => { e && e.stopPropagation(); setIndex((index - 1 + images.length) % images.length); };
 
-    // Handle standard view or lightbox view
     return (
         <>
             <div style={{ position: 'relative', marginBottom: '2.5rem', borderRadius: '16px', overflow: 'hidden', bg: '#000', border: '1px solid var(--glass-border)' }}>
                 <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', position: 'relative' }}>
                     <img
-                        src={`http://localhost:8000/static/${img.localPath}`}
+                        src={`${API_URL}/static/${img.localPath}?t=${new Date(img.updatedAt || img.createdAt).getTime()}&r=${refreshKey}`}
                         alt="Gallery"
                         style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', cursor: 'pointer' }}
                         onClick={() => setIsLightbox(true)}
                     />
 
-                    {/* Fullscreen Icon */}
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsLightbox(true); }}
                         title="Full Screen"
@@ -43,9 +127,15 @@ const ImageCarousel = ({ images, index, setIndex }) => {
                     >
                         ⛶
                     </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(img); }}
+                        title="Edit Image"
+                        style={{ position: 'absolute', top: '1rem', right: '3.5rem', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer' }}
+                    >
+                        ✏️
+                    </button>
                 </div>
 
-                {/* Controls (Inline) */}
                 {images.length > 1 && (
                     <>
                         <button onClick={prev} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', borderRadius: '50%', width: '48px', height: '48px', fontSize: '1.5rem', cursor: 'pointer', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
@@ -57,20 +147,18 @@ const ImageCarousel = ({ images, index, setIndex }) => {
                 )}
             </div>
 
-            {/* Lightbox Overlay */}
             {isLightbox && (
                 <div
                     style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}
                     onClick={() => setIsLightbox(false)}
                 >
                     <img
-                        src={`http://localhost:8000/static/${img.localPath}`}
+                        src={`${API_URL}/static/${img.localPath}?t=${new Date(img.updatedAt || img.createdAt).getTime()}&r=${refreshKey}`}
                         alt="Fullscreen"
                         style={{ maxHeight: '95vh', maxWidth: '95vw', objectFit: 'contain', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }}
-                        onClick={(e) => e.stopPropagation()} // Prevent close on image click
+                        onClick={(e) => e.stopPropagation()}
                     />
 
-                    {/* Lightbox Controls */}
                     <button onClick={() => setIsLightbox(false)} style={{ position: 'absolute', top: '2rem', right: '2rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', color: 'white', fontSize: '1.5rem', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer' }}>✕</button>
 
                     {images.length > 1 && (
@@ -89,6 +177,57 @@ const ImageCarousel = ({ images, index, setIndex }) => {
     );
 };
 
+const AccordionCard = ({ title, icon, defaultOpen = false, children }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <div style={{
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: '16px',
+            marginBottom: '2.5rem',
+            boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+            backdropFilter: 'blur(5px)',
+            overflow: 'hidden',
+            transition: 'all 0.3s ease'
+        }}>
+            <div
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    padding: '1.5rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    userSelect: 'none'
+                }}
+            >
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    {icon} {title}
+                </h3>
+                <span style={{
+                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s ease',
+                    color: 'var(--text-secondary)',
+                    fontSize: '1.2rem'
+                }}>
+                    ▼
+                </span>
+            </div>
+
+            {isOpen && (
+                <div style={{
+                    padding: '0 1.5rem 1.5rem 1.5rem',
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                    animation: 'fadeIn 0.3s ease'
+                }}>
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function ArticleViewer({ article }) {
     if (!article) {
         return (
@@ -100,17 +239,51 @@ export default function ArticleViewer({ article }) {
         );
     }
 
-    // Safely parse JSON tags
-    const getTags = (img) => {
+    const hasAIContent = true; // Always show sections so they can be edited (added)
+    const [imgIndex, setImgIndex] = useState(0);
+    const [editingImage, setEditingImage] = useState(null); // Image object being edited
+
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    const handleSaveImageEdit = async (blob) => {
         try {
-            return img.tags ? JSON.parse(img.tags) : [];
-        } catch {
-            return [];
+            const newImage = await createImage(article.id, blob);
+
+            if (newImage) {
+                // Add new image to article.images
+                article.images.push(newImage);
+                // Switch to new image
+                setImgIndex(article.images.length - 1);
+            }
+
+            setEditingImage(null);
+            setRefreshKey(prev => prev + 1); // Force refresh of images
+        } catch (e) {
+            console.error("Failed to save edited image", e);
+            alert("Failed to save image");
         }
     };
 
-    const hasAIContent = article.summary || (article.images && article.images.some(img => img.isAnalyzed));
-    const [imgIndex, setImgIndex] = useState(0);
+    // Helpers for updates
+    const handleSummaryUpdate = async (newSummary) => {
+        try {
+            await updateArticle(article.id, { summary: newSummary });
+            article.summary = newSummary; // Optimistic update
+        } catch (e) {
+            console.error("Failed to update summary", e);
+            alert("Failed to save summary");
+        }
+    };
+
+    const handleImageUpdate = async (img, field, value) => {
+        try {
+            const updateData = { [field]: value };
+            await updateImage(img.id, updateData);
+            img[field] = value; // Optimistic update
+        } catch (e) {
+            console.error(`Failed to update image ${field}`, e);
+        }
+    };
 
     return (
         <div style={{ padding: '2rem', height: '100%', overflowY: 'auto', background: 'transparent' }}>
@@ -161,26 +334,13 @@ export default function ArticleViewer({ article }) {
 
             {/* --- VISUAL GALLERY (CAROUSEL) --- */}
             {article.images && article.images.length > 0 && (
-                <ImageCarousel images={article.images} index={imgIndex} setIndex={setImgIndex} />
+                <ImageCarousel images={article.images} index={imgIndex} setIndex={setImgIndex} onEdit={setEditingImage} refreshKey={refreshKey} />
             )}
 
             {/* --- AI IMAGE ANALYSIS CARD --- */}
-            {hasAIContent && (
-                <div style={{
-                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
-                    border: '1px solid var(--glass-border)',
-                    borderRadius: '16px',
-                    padding: '1.5rem',
-                    marginBottom: '2.5rem',
-                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-                    backdropFilter: 'blur(5px)'
-                }}>
-                    <h3 style={{ margin: '0 0 1.2rem 0', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        👁️ AI Image Analysis
-                    </h3>
-
-                    {/* Vision Analysis */}
-                    {article.images && article.images.map((img, idx) => img.isAnalyzed && img.analysis && (
+            {article.images && article.images.length > 0 && (
+                <AccordionCard title="AI Image Analysis" icon="👁️" defaultOpen={false}>
+                    {article.images.map((img, idx) => (
                         <div
                             key={img.id}
                             style={{ display: 'flex', gap: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', marginBottom: '0.8rem', cursor: 'pointer', border: imgIndex === idx ? '1px solid var(--accent-color)' : '1px solid transparent' }}
@@ -188,54 +348,65 @@ export default function ArticleViewer({ article }) {
                         >
                             <div style={{ width: '60px', height: '60px', flexShrink: 0 }}>
                                 <img
-                                    src={`http://localhost:8000/static/${img.localPath}`}
+                                    src={`${API_URL}/static/${img.localPath}?t=${new Date(img.updatedAt || img.createdAt).getTime()}&r=${refreshKey}`}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
                                     alt="thumb"
                                 />
                             </div>
-                            <div>
-                                <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>{img.analysis}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                    {getTags(img).map((tag, i) => (
-                                        <span key={i} style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px' }}>#{tag}</span>
-                                    ))}
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                                    <InlineEdit
+                                        value={img.analysis}
+                                        onSave={(val) => handleImageUpdate(img, 'analysis', val)}
+                                        multiline
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.75rem', opacity: 0.5, marginRight: '4px' }}>tags:</span>
+                                    <div style={{ flex: 1 }}>
+                                        <InlineEdit
+                                            value={img.tags}
+                                            onSave={(val) => handleImageUpdate(img, 'tags', val)}
+                                            style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--text-secondary)' }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     ))}
-                </div>
+                </AccordionCard>
             )}
+
+
+            {/* --- IMAGE EDITOR MODAL --- */}
+            {
+                editingImage && (
+                    <ImageEditor
+                        imageId={editingImage.id}
+                        imageUrl={`${API_URL}/static/${editingImage.localPath}?t=${new Date(editingImage.updatedAt || editingImage.createdAt).getTime()}&r=${refreshKey}`}
+                        onSave={handleSaveImageEdit}
+                        onCancel={() => setEditingImage(null)}
+                    />
+                )
+            }
 
             {/* --- AI SUMMARY CARD --- */}
-            {hasAIContent && (
-                <div style={{
-                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
-                    border: '1px solid var(--glass-border)',
-                    borderRadius: '16px',
-                    padding: '1.5rem',
-                    marginBottom: '2.5rem',
-                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-                    backdropFilter: 'blur(5px)'
-                }}>
-                    <h3 style={{ margin: '0 0 1.2rem 0', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        📝 AI Summary
-                    </h3>
-
-                    {/* Summary */}
-                    {article.summary && (
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <div style={{
-                                lineHeight: '1.6',
-                                fontSize: '1rem',
-                                color: '#e2e8f0',
-                                whiteSpace: 'pre-wrap'
-                            }}>
-                                {article.summary}
-                            </div>
-                        </div>
-                    )}
+            <AccordionCard title="AI Summary" icon="📝" defaultOpen={false}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{
+                        lineHeight: '1.6',
+                        fontSize: '1rem',
+                        color: '#e2e8f0',
+                        whiteSpace: 'pre-wrap'
+                    }}>
+                        <InlineEdit
+                            value={article.summary}
+                            onSave={handleSummaryUpdate}
+                            multiline
+                        />
+                    </div>
                 </div>
-            )}
+            </AccordionCard>
 
             {/* --- MAIN CONTENT --- */}
             <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', marginBottom: '2.5rem' }} />
@@ -252,6 +423,6 @@ export default function ArticleViewer({ article }) {
                 {article.content}
             </div>
 
-        </div>
+        </div >
     );
 }

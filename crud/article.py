@@ -1,10 +1,44 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from datetime import datetime
 from model.article import Article
+from model.image import Image
 from schema.article import ArticleCreate, ArticleUpdate
+from schema.image import ImageUpdate, ImageCreate
 
 def getArticle(db: Session, articleId: int):
     return db.query(Article).filter(Article.id == articleId).first()
+
+def getImage(db: Session, imageId: int):
+    return db.query(Image).filter(Image.id == imageId).first()
+
+def updateImage(db: Session, imageId: int, imageUpdate: ImageUpdate):
+    dbImage = getImage(db, imageId)
+    if not dbImage:
+        return None
+    
+    updateData = imageUpdate.model_dump(exclude_unset=True)
+    for key, value in updateData.items():
+        setattr(dbImage, key, value)
+        
+    db.add(dbImage)
+    db.commit()
+    db.refresh(dbImage)
+    return dbImage
+
+def createImage(db: Session, image: ImageCreate, articleId: int):
+    dbImage = Image(
+        articleId=articleId,
+        localPath=image.localPath,
+        originalUrl=image.originalUrl,
+        analysis=image.analysis,
+        tags=image.tags,
+        isAnalyzed=image.isAnalyzed
+    )
+    db.add(dbImage)
+    db.commit()
+    db.refresh(dbImage)
+    return dbImage
 
 def getArticleByUrl(db: Session, url: str):
     return db.query(Article).filter(Article.url == url).first()
@@ -22,10 +56,20 @@ def getArticles(
     start_date: datetime = None,
     end_date: datetime = None
 ):
-    query = db.query(Article)
+    query = db.query(Article).outerjoin(Image)
     
     if title_ilike:
-        query = query.filter(Article.title.ilike(f"%{title_ilike}%"))
+        # Generic search across multiple fields
+        search_term = f"%{title_ilike}%"
+        query = query.filter(
+            or_(
+                Article.title.ilike(search_term),
+                Article.summary.ilike(search_term),
+                Article.content.ilike(search_term),
+                Image.analysis.ilike(search_term),
+                Image.tags.ilike(search_term)
+            )
+        ).distinct()
     
     if category_in:
         query = query.filter(Article.category.in_(category_in))

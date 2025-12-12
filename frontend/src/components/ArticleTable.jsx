@@ -242,6 +242,7 @@ export default function ArticleTable({ model }) {
                                 label="Headline"
                                 sortKey="title"
                                 width="40%"
+                                filterType="title"
                                 sortConfig={sortConfig}
                                 filters={filters}
                                 activePopup={activePopup}

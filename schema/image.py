@@ -12,6 +12,10 @@ class ImageBase(BaseModel):
 class ImageCreate(ImageBase):
     pass
 
+class ImageUpdate(BaseModel):
+    analysis: Optional[str] = None
+    tags: Optional[str] = None
+
 class ImageResponse(ImageBase):
     id: int
     createdAt: datetime

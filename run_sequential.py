@@ -36,7 +36,7 @@ def main():
         
         print("\n--- [3/3] Sleeping 60s ---")
         print("="*40 + "\n")
-        time.sleep(60)
+        time.sleep(10)
 
 if __name__ == "__main__":
     main()

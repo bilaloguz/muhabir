@@ -16,3 +16,6 @@ lxml
 psycopg2-binary
 ollama
 Pillow
+rembg
+opencv-python-headless
+numpy
